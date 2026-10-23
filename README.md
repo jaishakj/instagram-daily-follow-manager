@@ -1,44 +1,42 @@
-# Instagram Daily Follow Manager (Linux)
+# Instagram Daily Follow Manager
 
-This free helper extracts usernames from your Instagram JSON export and opens up to 10 profile pages per local calendar day.
+Reads `usernames.json` (1191 handles) and, once per day, follows up to 10 of them.
+Playwright drives a visible Chromium window and clicks Follow itself.
 
-**Important:** It does not automatically click Follow or Send Request. You perform that action yourself in the browser, then confirm it in the terminal. This avoids implementing unauthorized follow-bot behavior and lets you verify each account.
-
-## Your file
-- Extracted unique usernames: **1191**
-- Input: `usernames.json`
-- Progress: `progress.json` (created automatically)
-- Browser session: `browser_profile/` (keeps your login session locally)
-
-## Install on Zorin OS / Linux
-
-Install Python 3 and pip if needed, then in this folder run:
-
+## Setup (Linux / macOS / Windows with a screen)
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 python -m playwright install chromium
-python main.py
+python main.py --login           # log in ONCE in the browser window, then press Enter
 ```
+Type your password only on the real instagram.com page in that window. It is never
+read by the script. The session is stored in `browser_profile/` (git-ignored).
 
-If Linux reports missing Chromium system libraries, run:
-
+## Daily use
 ```bash
-python -m playwright install-deps chromium
+python main.py --dry-run   # first time: opens profiles, reports what it would do, never clicks
+python main.py             # automatic: clicks Follow, max 10 follow actions per day
+python main.py --limit 5   # lower the daily cap (hard max 20)
+python main.py --manual    # old mode: you click, then confirm y/s/q in the terminal
 ```
 
-On the first run, Instagram may ask you to log in in the opened browser. Log in only on the official `instagram.com` website. Do not paste your password or session cookies into scripts.
+## Safety behaviour
+- Random 30-90 s pause between profiles; max 30 profiles opened per run.
+- A follow only counts as done after the button visibly changes to Following/Requested.
+- Stops immediately on an "Action Blocked" / "Try again later" style dialog. Wait 24-48 h.
+- Stops if logged out, or after 3 unrecognised results in a row (Instagram changed its layout).
+- Already followed / already requested / deleted accounts are marked done without a click.
+- Progress is saved after every profile in `progress.json`; delete it to reset the local tracker.
 
-## How it works
-1. Reads `usernames.json`.
-2. Removes duplicates while preserving the original order.
-3. Opens up to 10 profiles that are not yet marked complete.
-4. You manually click Follow / Request (or verify the account is already followed/requested).
-5. Type `y` in the terminal to mark it complete, `s` to skip, or `q` to stop.
-6. It saves progress so future runs continue where you left off.
+## Run it every day automatically (Linux, cron)
+A screen session is required because the browser is visible. Example, 10:00 daily:
+```
+0 10 * * * cd /path/to/instagram-daily-follow-manager && DISPLAY=:0 .venv/bin/python main.py >> run.log 2>&1
+```
 
-The daily limit is a local queue limit, not a guarantee that Instagram considers a particular follow rate safe. Avoid continuing if Instagram shows a restriction or warning.
-
-## Reset progress
-Stop the script and rename or delete `progress.json`. This resets only the local tracker, not Instagram follows or requests.
+## Risks
+Automated following violates Instagram's Terms of Use and can lead to action blocks or
+account restriction, even at low volume. The selectors depend on Instagram's current page
+layout and may need updating. Use at your own risk.
